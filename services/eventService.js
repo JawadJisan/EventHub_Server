@@ -8,7 +8,9 @@ exports.createEvent = async (eventData) => {
 
 // Get all events (sorted by date descending)
 exports.getAllEvents = async (filters = {}) => {
-  const { search, dateFilter } = filters;
+  const { search, dateFilter, page = 1, limit = 10 } = filters;
+  const skip = (page - 1) * limit;
+
   let query = {};
 
   // Search by title
@@ -16,39 +18,86 @@ exports.getAllEvents = async (filters = {}) => {
     query.title = { $regex: search, $options: "i" };
   }
 
-  // Date filtering
+  // Date filtering with UTC handling
   if (dateFilter) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const now = new Date();
+    const today = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+    );
 
     switch (dateFilter) {
       case "today":
-        query.date = {
-          $gte: today,
-          $lt: new Date(today.getTime() + 24 * 60 * 60 * 1000),
-        };
+        const tomorrow = new Date(today);
+        tomorrow.setUTCDate(today.getUTCDate() + 1);
+        query.date = { $gte: today, $lt: tomorrow };
         break;
+
       case "current-week":
         const startOfWeek = new Date(today);
-        startOfWeek.setDate(today.getDate() - today.getDay());
+        startOfWeek.setUTCDate(today.getUTCDate() - today.getUTCDay());
         const endOfWeek = new Date(startOfWeek);
-        endOfWeek.setDate(startOfWeek.getDate() + 7);
+        endOfWeek.setUTCDate(startOfWeek.getUTCDate() + 7);
         query.date = { $gte: startOfWeek, $lt: endOfWeek };
         break;
+
       case "last-week":
         const startOfLastWeek = new Date(today);
-        startOfLastWeek.setDate(today.getDate() - today.getDay() - 7);
+        startOfLastWeek.setUTCDate(today.getUTCDate() - today.getUTCDay() - 7);
         const endOfLastWeek = new Date(startOfLastWeek);
-        endOfLastWeek.setDate(startOfLastWeek.getDate() + 7);
+        endOfLastWeek.setUTCDate(startOfLastWeek.getUTCDate() + 7);
         query.date = { $gte: startOfLastWeek, $lt: endOfLastWeek };
         break;
-      // Add cases for month filters similarly
+
+      case "current-month":
+        const startOfMonth = new Date(
+          Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1)
+        );
+        const endOfMonth = new Date(
+          Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 1)
+        );
+        query.date = { $gte: startOfMonth, $lt: endOfMonth };
+        break;
+
+      case "last-month":
+        const startOfLastMonth = new Date(
+          Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 1, 1)
+        );
+        const endOfLastMonth = new Date(
+          Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1)
+        );
+        query.date = { $gte: startOfLastMonth, $lt: endOfLastMonth };
+        break;
+
+      case "upcoming":
+        query.date = { $gte: today };
+        break;
+
+      case "past":
+        query.date = { $lt: today };
+        break;
     }
   }
 
   return await Event.find(query)
-    .sort({ date: -1 })
-    .populate("createdBy", "name photoURL");
+    .sort({ date: -1 }) // Sort by date descending
+    .populate("createdBy", "name photoURL")
+    .populate("attendees", "name photoURL")
+    .skip(skip)
+    .limit(limit);
+};
+
+// Get total count for pagination
+exports.getEventsCount = async (filters = {}) => {
+  const { search, dateFilter } = filters;
+  let query = {};
+
+  if (search) {
+    query.title = { $regex: search, $options: "i" };
+  }
+
+  // Same date filtering logic as above
+
+  return await Event.countDocuments(query);
 };
 
 // Join an event
@@ -66,9 +115,155 @@ exports.joinEvent = async (eventId, userId) => {
   return await event.save();
 };
 
-// Get user's events
-exports.getUserEvents = async (userId) => {
-  return await Event.find({ createdBy: userId }).sort({ createdAt: -1 });
+exports.getUserEvents = async (filters = {}) => {
+  const { userId, search, dateFilter, page = 1, limit = 10 } = filters;
+  const skip = (page - 1) * limit;
+
+  let query = { createdBy: userId };
+
+  // Search by title
+  if (search) {
+    query.title = { $regex: search, $options: "i" };
+  }
+
+  // Date filtering with UTC handling
+  if (dateFilter) {
+    const now = new Date();
+    const today = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+    );
+
+    switch (dateFilter) {
+      case "today":
+        const tomorrow = new Date(today);
+        tomorrow.setUTCDate(today.getUTCDate() + 1);
+        query.date = { $gte: today, $lt: tomorrow };
+        break;
+
+      case "current-week":
+        const startOfWeek = new Date(today);
+        startOfWeek.setUTCDate(today.getUTCDate() - today.getUTCDay());
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setUTCDate(startOfWeek.getUTCDate() + 7);
+        query.date = { $gte: startOfWeek, $lt: endOfWeek };
+        break;
+
+      case "last-week":
+        const startOfLastWeek = new Date(today);
+        startOfLastWeek.setUTCDate(today.getUTCDate() - today.getUTCDay() - 7);
+        const endOfLastWeek = new Date(startOfLastWeek);
+        endOfLastWeek.setUTCDate(startOfLastWeek.getUTCDate() + 7);
+        query.date = { $gte: startOfLastWeek, $lt: endOfLastWeek };
+        break;
+
+      case "current-month":
+        const startOfMonth = new Date(
+          Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1)
+        );
+        const endOfMonth = new Date(
+          Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 1)
+        );
+        query.date = { $gte: startOfMonth, $lt: endOfMonth };
+        break;
+
+      case "last-month":
+        const startOfLastMonth = new Date(
+          Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 1, 1)
+        );
+        const endOfLastMonth = new Date(
+          Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1)
+        );
+        query.date = { $gte: startOfLastMonth, $lt: endOfLastMonth };
+        break;
+
+      case "upcoming":
+        query.date = { $gte: today };
+        break;
+
+      case "past":
+        query.date = { $lt: today };
+        break;
+    }
+  }
+
+  return await Event.find(query)
+    .sort({ date: -1 }) // Sort by date descending
+    .populate("createdBy", "name photoURL")
+    .populate("attendees", "name photoURL")
+    .skip(skip)
+    .limit(limit);
+};
+
+// Get total count of user's events with filters
+exports.getUserEventsCount = async (filters = {}) => {
+  const { userId, search, dateFilter } = filters;
+  let query = { createdBy: userId };
+
+  if (search) {
+    query.title = { $regex: search, $options: "i" };
+  }
+
+  // Date filtering - same logic as getUserEvents
+  if (dateFilter) {
+    const now = new Date();
+    const today = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+    );
+
+    switch (dateFilter) {
+      case "today":
+        const tomorrow = new Date(today);
+        tomorrow.setUTCDate(today.getUTCDate() + 1);
+        query.date = { $gte: today, $lt: tomorrow };
+        break;
+
+      case "current-week":
+        const startOfWeek = new Date(today);
+        startOfWeek.setUTCDate(today.getUTCDate() - today.getUTCDay());
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setUTCDate(startOfWeek.getUTCDate() + 7);
+        query.date = { $gte: startOfWeek, $lt: endOfWeek };
+        break;
+
+      case "last-week":
+        const startOfLastWeek = new Date(today);
+        startOfLastWeek.setUTCDate(today.getUTCDate() - today.getUTCDay() - 7);
+        const endOfLastWeek = new Date(startOfLastWeek);
+        endOfLastWeek.setUTCDate(startOfLastWeek.getUTCDate() + 7);
+        query.date = { $gte: startOfLastWeek, $lt: endOfLastWeek };
+        break;
+
+      case "current-month":
+        const startOfMonth = new Date(
+          Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1)
+        );
+        const endOfMonth = new Date(
+          Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 1)
+        );
+        query.date = { $gte: startOfMonth, $lt: endOfMonth };
+        break;
+
+      case "last-month":
+        const startOfLastMonth = new Date(
+          Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 1, 1)
+        );
+        const endOfLastMonth = new Date(
+          Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1)
+        );
+        query.date = { $gte: startOfLastMonth, $lt: endOfLastMonth };
+        break;
+
+      case "upcoming":
+        query.date = { $gte: today };
+        break;
+
+      case "past":
+        query.date = { $lt: today };
+        break;
+    }
+  }
+
+  return await Event.countDocuments(query);
 };
 
 // Update event

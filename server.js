@@ -10,7 +10,14 @@ connectDB();
 
 // Middleware
 app.use(express.json());
-app.use(cors());
+// app.use(cors());
+app.use(
+  cors({
+    origin: "http://localhost:8080",
+    exposedHeaders: ["Authorization"],
+    credentials: true,
+  })
+);
 
 // Routes
 app.use("/api/auth", require("./routes/authRoutes"));
