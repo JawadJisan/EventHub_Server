@@ -13,7 +13,7 @@ app.use(express.json());
 // app.use(cors());
 app.use(
   cors({
-    origin: "http://localhost:8080",
+    origin: "https://event-hub-alpha-self.vercel.app",
     exposedHeaders: ["Authorization"],
     credentials: true,
   })
