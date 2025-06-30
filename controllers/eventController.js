@@ -1,4 +1,5 @@
 const eventService = require("../services/eventService");
+const Event = require("../models/Event");
 
 exports.createEvent = async (req, res) => {
   try {
@@ -111,8 +112,21 @@ exports.updateEvent = async (req, res) => {
   }
 };
 
+// Delete event
 exports.deleteEvent = async (req, res) => {
   try {
+    // Check if event exists and user is owner
+    const event = await Event.findById(req.params.id);
+    if (!event) {
+      return res.status(404).json({ error: "Event not found" });
+    }
+
+    if (event.createdBy.toString() !== req.user.id) {
+      return res
+        .status(403)
+        .json({ error: "Unauthorized to delete this event" });
+    }
+
     await eventService.deleteEvent(req.params.id);
     res.json({ message: "Event deleted successfully" });
   } catch (err) {

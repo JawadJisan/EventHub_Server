@@ -271,7 +271,13 @@ exports.updateEvent = async (eventId, updateData) => {
   return await Event.findByIdAndUpdate(eventId, updateData, { new: true });
 };
 
-// Delete event
+// Delete event with existence check
 exports.deleteEvent = async (eventId) => {
-  return await Event.findByIdAndDelete(eventId);
+  const event = await Event.findById(eventId);
+  if (!event) {
+    throw new Error("Event not found");
+  }
+
+  await Event.findByIdAndDelete(eventId);
+  return { message: "Event deleted successfully" };
 };
