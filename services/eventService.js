@@ -266,9 +266,18 @@ exports.getUserEventsCount = async (filters = {}) => {
   return await Event.countDocuments(query);
 };
 
-// Update event
+// Update event with validation
 exports.updateEvent = async (eventId, updateData) => {
-  return await Event.findByIdAndUpdate(eventId, updateData, { new: true });
+  // Find event first to validate
+  const event = await Event.findById(eventId);
+  if (!event) throw new Error("Event not found");
+
+  return await Event.findByIdAndUpdate(eventId, updateData, {
+    new: true,
+    runValidators: true,
+  })
+    .populate("createdBy", "name photoURL")
+    .populate("attendees", "name photoURL");
 };
 
 // Delete event with existence check
@@ -280,4 +289,11 @@ exports.deleteEvent = async (eventId) => {
 
   await Event.findByIdAndDelete(eventId);
   return { message: "Event deleted successfully" };
+};
+
+// Get single event by ID with full population
+exports.getEventById = async (eventId) => {
+  return await Event.findById(eventId)
+    .populate("createdBy", "name email photoURL")
+    .populate("attendees", "name email photoURL");
 };

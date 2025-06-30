@@ -18,13 +18,16 @@ router.get("/", eventController.getEvents);
 // @desc    Join an event
 router.put("/join/:id", eventController.joinEvent);
 
+// Get single event by ID
+router.get("/get/:id", eventController.getEventById);
+
 // @route   GET api/events/my-events
 // @desc    Get user's events
 router.get("/my-events", eventController.getUserEvents);
 
 // @route   PUT api/events/:id
 // @desc    Update event
-router.put("/:id", eventController.updateEvent);
+router.put("/update/:id", eventController.updateEvent);
 
 // @route   DELETE api/events/:id
 // @desc    Delete event
