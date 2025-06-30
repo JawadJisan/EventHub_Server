@@ -215,3 +215,15 @@ exports.getEventById = async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 };
+
+// Get latest 3 events (no auth required)
+exports.getLatestEvents = async (req, res) => {
+  try {
+    const events = await eventService.getLatestEvents();
+    res.json(events);
+  } catch (err) {
+    res
+      .status(500)
+      .json({ error: "Server error while fetching latest events" });
+  }
+};

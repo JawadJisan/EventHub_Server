@@ -3,7 +3,12 @@ const router = express.Router();
 const auth = require("../middleware/auth");
 const eventController = require("../controllers/eventController");
 
-// Private routes (require authentication)
+// Public routes (no authentication required)
+// @route   GET api/events/latest
+// @desc    Get latest 3 events (no auth required)
+router.get("/latest", eventController.getLatestEvents);
+
+// Apply authentication middleware to all routes below this line
 router.use(auth);
 
 // @route   POST api/events

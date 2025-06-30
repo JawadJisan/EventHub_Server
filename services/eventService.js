@@ -297,3 +297,12 @@ exports.getEventById = async (eventId) => {
     .populate("createdBy", "name email photoURL")
     .populate("attendees", "name email photoURL");
 };
+
+// Get latest 3 events (sorted by date descending)
+exports.getLatestEvents = async () => {
+  return await Event.find()
+    .sort({ date: -1 })
+    .limit(3)
+    .populate("createdBy", "name photoURL")
+    .populate("attendees", "name photoURL");
+};
