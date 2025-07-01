@@ -11,9 +11,23 @@ connectDB();
 // Middleware
 app.use(express.json());
 // app.use(cors());
+const allowedOrigins = [
+  "https://event-hub-alpha-self.vercel.app",
+  "http://localhost:8080",
+];
+
 app.use(
   cors({
-    origin: "https://event-hub-alpha-self.vercel.app",
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, Postman)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     exposedHeaders: ["Authorization"],
     credentials: true,
   })
